@@ -2,6 +2,8 @@
 
 Date: 2026-10-31. Scope: all of `backend/app/` and `frontend/src/`, plus the Docker and script setup.
 
+Note: on branch `kanban_java` the backend was later ported to Spring Boot, so backend file references below point to the original Python code. The fix for #1 lives in `backend/src/main/java/com/kanbanstudio/web/ApiController.java` there, and the `uv` Dockerfile note no longer applies.
+
 State at review time: 20 backend tests, 12 frontend unit tests, 7 Playwright tests, and lint all pass. The container smoke test also passes (`/`, `/api/health`, auth gate, board load). Secrets and the SQLite files are gitignored.
 
 Overall the code is small, readable, and close to the plan. Validation is strong on the backend: board saves are checked against the fixed columns, AI actions are applied to a copy and rejected as a whole if any action is invalid, and only free OpenRouter models can be selected. The findings below are ordered by severity.

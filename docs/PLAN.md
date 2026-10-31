@@ -9,6 +9,7 @@ Deliver a locally runnable project-management MVP with a single Kanban board per
 - Frontend: Next.js, built as static assets and served by the FastAPI application at `/`.
 - Backend: Python FastAPI, packaged with the frontend in one Docker container.
 - Python package management in the container: `uv`.
+- Deviation (2026-10-31, branch `kanban_java`): the backend was ported to Java 25 / Spring Boot 4.1 built with the Maven wrapper. The API, SQLite schema, and Docker/script workflow are unchanged; the Python-specific items below describe the original implementation.
 - Database: local SQLite, initialized automatically when missing, with a schema that supports multiple users and one board per user.
 - MVP sign-in: the hardcoded username `user` and password `password`; keep authentication boundaries suitable for future multiple-user support.
 - AI: backend-only calls to OpenRouter using `OPENROUTER_API_KEY` from the root `.env`; do not expose the key to the browser or commit it.

@@ -11,5 +11,6 @@ cleanup() {
 trap cleanup EXIT HUP INT TERM
 
 cd "$PROJECT_ROOT/backend"
-DATABASE_PATH="$TEST_DATA_DIR/kanban.sqlite3" \
-  uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
+./mvnw -q -DskipTests package
+DATABASE_PATH="$TEST_DATA_DIR/kanban.sqlite3" OPENROUTER_API_KEY="" \
+  java -jar target/app.jar --server.address=127.0.0.1

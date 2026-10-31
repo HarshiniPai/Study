@@ -6,20 +6,23 @@ RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-FROM python:3.13-slim
+FROM maven:3.9-eclipse-temurin-25 AS backend-build
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+WORKDIR /app/backend
+COPY backend/pom.xml ./
+RUN mvn -q dependency:go-offline
+COPY backend/src ./src
+RUN mvn -q -DskipTests package
+
+FROM eclipse-temurin:25-jre
 
 WORKDIR /app/backend
 
-COPY backend/pyproject.toml backend/uv.lock ./
-RUN uv sync --frozen --no-dev
-
-COPY backend/app ./app
+COPY --from=backend-build /app/backend/target/app.jar ./app.jar
 COPY --from=frontend-build /app/frontend/out /app/frontend/out
 
 ENV DATABASE_PATH=/data/kanban.sqlite3
 
 EXPOSE 8000
 
-CMD ["uv", "run", "--no-sync", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["java", "-jar", "app.jar"]

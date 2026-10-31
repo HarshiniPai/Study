@@ -2,7 +2,7 @@
 
 ## Current application
 
-This directory contains a Next.js App Router frontend for Kanban Studio. The production build uses Next.js static export and writes assets to `out/`; FastAPI serves those assets at `/`. The board loads from and saves to the authenticated FastAPI API. The frontend keeps an optimistic in-memory copy while editing and restores the previous state when a save fails.
+This directory contains a Next.js App Router frontend for Kanban Studio. The production build uses Next.js static export and writes assets to `out/`; the Spring Boot backend serves those assets at `/`. The board loads from and saves to the authenticated FastAPI API. The frontend keeps an optimistic in-memory copy while editing and restores the previous state when a save fails.
 
 ## Structure
 
@@ -34,7 +34,7 @@ Run these from `frontend/`:
 - `npm run dev` starts the development server.
 - `npm run lint` runs ESLint.
 - `npm run test:unit` runs Vitest.
-- `npm run test:e2e` builds the static app and runs Playwright against it through FastAPI; `uv` and backend dependencies must be available.
+- `npm run test:e2e` builds the static app and runs Playwright against it through the Spring Boot backend; JDK 25 must be installed.
 - `npm run test:all` runs unit and end-to-end tests.
 - `npm run build` creates the Next.js production build.
 

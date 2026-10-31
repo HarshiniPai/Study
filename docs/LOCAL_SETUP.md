@@ -6,7 +6,7 @@ On macOS and Linux, run `scripts/start.sh` to build and start the app at `http:/
 
 The app at `/` is the statically exported Kanban board. `GET /api/health` is the backend health endpoint, and `/api/board` reads/updates the authenticated user's board. Docker stores the database in the persistent `pm-data` volume at `/data/kanban.sqlite3`.
 
-For local development and tests, first build the frontend from `frontend/` with `npm ci && npm run build`. Then, from `backend/`, use `uv run --group dev pytest` to run backend tests or `uv run uvicorn app.main:app --reload` to serve the built app and API. The frontend end-to-end test command builds the export and starts FastAPI automatically.
+For local development and tests, first build the frontend from `frontend/` with `npm ci && npm run build`. Backend work needs JDK 25; Maven is downloaded by the wrapper. From `backend/`, use `./mvnw test` to run backend tests (they do not need the frontend build) or `./mvnw spring-boot:run` to serve the built app and API. The frontend end-to-end test command builds the export and starts FastAPI automatically.
 
 Sign in with `user` / `password`. The local MVP uses a signed, HTTP-only session cookie; its signing key is generated when the backend starts, so restarting the backend requires signing in again. This is a local demo mechanism, not production authentication.
 
@@ -14,4 +14,4 @@ For AI features, set `OPENROUTER_API_KEY` in the project-root `.env` file. The s
 
 If chat still reports HTTP 429 after model fallbacks, OpenRouter may have rate-limited the account or all free providers. Check usage and limits in your OpenRouter account or wait and retry.
 
-To make an explicit live connectivity request from `backend/`, run `uv run python -m app.check_openrouter`. This sends a `2 + 2` prompt to OpenRouter; the automated tests use mocked HTTP and do not require a key or network access.
+To make an explicit live connectivity request from `backend/`, run `./mvnw -q -DskipTests package && java -jar target/app.jar --spring.main.web-application-type=none --app.check-openrouter=true`. This sends a `2 + 2` prompt to OpenRouter; the automated tests use mocked HTTP and do not require a key or network access.
