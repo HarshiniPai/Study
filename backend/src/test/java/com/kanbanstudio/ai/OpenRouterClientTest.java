@@ -11,7 +11,6 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import com.kanbanstudio.ai.OpenRouterClient.OpenRouterConfigurationException;
 import com.kanbanstudio.ai.OpenRouterClient.OpenRouterException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -62,7 +61,7 @@ class OpenRouterClientTest {
 
         assertThat(answer).isEqualTo("4");
         server.verify();
-        assertThat(sentModels()).isEqualTo(OpenRouterClient.FREE_MODELS);
+        assertThat(sentModels()).isEqualTo(OpenRouterClient.FREE_MODELS.subList(0, 3));
         assertThat(requestBodies.getFirst().path("messages"))
                 .isEqualTo(jsonMapper.readTree("[{\"role\":\"user\",\"content\":\"What is 2 + 2?\"}]"));
         assertThat(requestBodies.getFirst().has("response_format")).isFalse();
@@ -75,7 +74,8 @@ class OpenRouterClientTest {
         client("test-key", OpenRouterClient.FREE_MODELS.get(1)).complete(QUESTION, null);
 
         assertThat(sentModels().getFirst()).isEqualTo(OpenRouterClient.FREE_MODELS.get(1));
-        assertThat(new HashSet<>(sentModels())).isEqualTo(new HashSet<>(OpenRouterClient.FREE_MODELS));
+        assertThat(sentModels()).hasSize(OpenRouterClient.MAX_MODELS_PER_REQUEST).doesNotHaveDuplicates();
+        assertThat(OpenRouterClient.FREE_MODELS).containsAll(sentModels());
     }
 
     @Test

@@ -23,6 +23,8 @@ public class OpenRouterClient {
             "nvidia/nemotron-3.5-super-vl:free",
             "dots-studio/dots-3-note-preview:free",
             "liquid/lfm-2.5-2.6b:free");
+    /** OpenRouter rejects requests whose "models" fallback list has more entries than this. */
+    static final int MAX_MODELS_PER_REQUEST = 3;
 
     public static class OpenRouterException extends RuntimeException {
         public OpenRouterException(String message) {
@@ -66,7 +68,10 @@ public class OpenRouterClient {
         // OpenRouter tries the models in order, so rate-limited providers fall back to other free models.
         List<String> models = new ArrayList<>();
         models.add(model);
-        FREE_MODELS.stream().filter(candidate -> !candidate.equals(model)).forEach(models::add);
+        FREE_MODELS.stream()
+                .filter(candidate -> !candidate.equals(model))
+                .limit(MAX_MODELS_PER_REQUEST - 1)
+                .forEach(models::add);
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("models", models);

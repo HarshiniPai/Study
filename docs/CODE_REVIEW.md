@@ -44,6 +44,10 @@ Fix: skip the listeners while `isEditing` (for example, `{...(isEditing ? {} : l
 
 `frontend/src/components/AIChatSidebar.tsx:63`. `response.json()` runs before checking `response.ok`. A plain-text error (for example, an unhandled 500 returning "Internal Server Error") throws a JSON syntax error, and that raw message is shown in the chat. Check `response.ok` first, or catch the parse failure and fall back to the status-code message.
 
+### 8. Every live AI request was rejected by OpenRouter (high) - FIXED
+
+Found 2026-10-31 during the first live test. The client sent all 4 free models in OpenRouter's `models` fallback list, but OpenRouter accepts at most 3 (`'models' array must have 3 items or fewer`), so every chat request failed with HTTP 400 and the UI showed "OpenRouter returned HTTP 400." The mocked tests did not catch it. Fixed by sending the chosen model plus at most two fallbacks (`OpenRouterClient.MAX_MODELS_PER_REQUEST`).
+
 ## Gaps against the plan
 
 ### 6. Cards cannot be moved with the keyboard

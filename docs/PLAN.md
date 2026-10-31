@@ -197,10 +197,10 @@ Frontend, backend, and end-to-end tests pass locally. The container smoke test r
 ### Tests
 
 - [x] Unit tests with a mocked HTTP client for request construction, successful responses, and provider/API errors.
-- [ ] Opt-in live connectivity check using a configured key; verify a response equivalent to `4`.
+- [x] Opt-in live connectivity check using a configured key; verify a response equivalent to `4`.
 - [x] Verify missing-key behavior is an explicit actionable error and does not prevent non-AI app features from running.
 
-The mocked OpenRouter tests pass. The live connectivity check was not run to avoid sending credentials or a request to an external provider from this environment.
+The mocked OpenRouter tests pass. The live check first failed with HTTP 400 because OpenRouter accepts at most 3 entries in the `models` fallback list and 4 were sent; after capping the list at 3 (2026-10-31), the live check returned `4` and a live board chat succeeded.
 
 ### Success criteria
 
