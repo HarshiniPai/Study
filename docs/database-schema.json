@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "engine": "SQLite",
+  "database": {
+    "filename": "kanban.sqlite3",
+    "container_path": "/data/kanban.sqlite3",
+    "docker_volume": "pm-data",
+    "foreign_keys_enabled_for_each_connection": true
+  },
+  "initialization": {
+    "create_missing_database": true,
+    "create_tables_if_missing": true,
+    "version_tracking": "PRAGMA user_version",
+    "version": 1,
+    "mvp_user": {
+      "id": "mvp-user",
+      "username": "user",
+      "password_storage": "none; MVP credentials are hardcoded in the backend"
+    }
+  },
+  "tables": [
+    {
+      "name": "users",
+      "primary_key": ["id"],
+      "unique": [["username"]],
+      "columns": [
+        { "name": "id", "type": "TEXT", "nullable": false },
+        { "name": "username", "type": "TEXT", "nullable": false },
+        { "name": "created_at", "type": "TEXT", "nullable": false, "format": "UTC ISO 8601" }
+      ],
+      "foreign_keys": []
+    },
+    {
+      "name": "boards",
+      "primary_key": ["id"],
+      "unique": [["user_id"]],
+      "columns": [
+        { "name": "id", "type": "TEXT", "nullable": false },
+        { "name": "user_id", "type": "TEXT", "nullable": false },
+        { "name": "title", "type": "TEXT", "nullable": false },
+        { "name": "created_at", "type": "TEXT", "nullable": false, "format": "UTC ISO 8601" },
+        { "name": "updated_at", "type": "TEXT", "nullable": false, "format": "UTC ISO 8601" }
+      ],
+      "foreign_keys": [
+        {
+          "columns": ["user_id"],
+          "references": { "table": "users", "columns": ["id"] },
+          "on_delete": "CASCADE"
+        }
+      ]
+    },
+    {
+      "name": "columns",
+      "primary_key": ["board_id", "id"],
+      "unique": [["board_id", "position"]],
+      "checks": ["position >= 0", "trim(title) <> ''"],
+      "columns": [
+        { "name": "board_id", "type": "TEXT", "nullable": false },
+        { "name": "id", "type": "TEXT", "nullable": false },
+        { "name": "title", "type": "TEXT", "nullable": false },
+        { "name": "position", "type": "INTEGER", "nullable": false }
+      ],
+      "foreign_keys": [
+        {
+          "columns": ["board_id"],
+          "references": { "table": "boards", "columns": ["id"] },
+          "on_delete": "CASCADE"
+        }
+      ]
+    },
+    {
+      "name": "cards",
+      "primary_key": ["board_id", "id"],
+      "unique": [["board_id", "column_id", "position"]],
+      "checks": ["position >= 0", "trim(title) <> ''"],
+      "columns": [
+        { "name": "board_id", "type": "TEXT", "nullable": false },
+        { "name": "id", "type": "TEXT", "nullable": false },
+        { "name": "column_id", "type": "TEXT", "nullable": false },
+        { "name": "title", "type": "TEXT", "nullable": false },
+        { "name": "details", "type": "TEXT", "nullable": false },
+        { "name": "position", "type": "INTEGER", "nullable": false },
+        { "name": "created_at", "type": "TEXT", "nullable": false, "format": "UTC ISO 8601" },
+        { "name": "updated_at", "type": "TEXT", "nullable": false, "format": "UTC ISO 8601" }
+      ],
+      "foreign_keys": [
+        {
+          "columns": ["board_id", "column_id"],
+          "references": { "table": "columns", "columns": ["board_id", "id"] },
+          "on_delete": "CASCADE"
+        }
+      ]
+    }
+  ],
+  "application_invariants": {
+    "boards_per_user": 1,
+    "mvp_column_count": 5,
+    "column_set_is_fixed": true,
+    "column_renames_allowed": true,
+    "column_order_field": "columns.position",
+    "card_order_field": "cards.position within each column",
+    "board_changes_are_transactional": true
+  }
+}

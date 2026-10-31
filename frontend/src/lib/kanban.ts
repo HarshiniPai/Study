@@ -15,6 +15,33 @@ export type BoardData = {
   cards: Record<string, Card>;
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+export const isBoardData = (value: unknown): value is BoardData => {
+  if (!isRecord(value) || !Array.isArray(value.columns) || !isRecord(value.cards)) {
+    return false;
+  }
+
+  const columnsAreValid = value.columns.every(
+    (column) =>
+      isRecord(column) &&
+      typeof column.id === "string" &&
+      typeof column.title === "string" &&
+      Array.isArray(column.cardIds) &&
+      column.cardIds.every((cardId) => typeof cardId === "string")
+  );
+  const cardsAreValid = Object.entries(value.cards).every(
+    ([id, card]) =>
+      isRecord(card) &&
+      card.id === id &&
+      typeof card.title === "string" &&
+      typeof card.details === "string"
+  );
+
+  return columnsAreValid && cardsAreValid;
+};
+
 export const initialData: BoardData = {
   columns: [
     { id: "col-backlog", title: "Backlog", cardIds: ["card-1", "card-2"] },

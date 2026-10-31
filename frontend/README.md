@@ -1,11 +1,19 @@
 # Kanban Studio
 
-## Run
+## Development
 
 ```bash
 npm install
 npm run dev
 ```
+
+## Static build
+
+```bash
+npm run build
+```
+
+The static export is written to `out/` and served at `/` by the FastAPI application in the integrated Docker app. The board and sign-in state are loaded from the backend API.
 
 ## Tests
 
@@ -13,3 +21,5 @@ npm run dev
 npm run test:unit
 npm run test:e2e
 ```
+
+The end-to-end tests build the static export and run it through the FastAPI app; `uv` and its Python dependencies must be available.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -13,11 +13,19 @@ import {
 } from "@dnd-kit/core";
 import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
-import { createId, initialData, moveCard, type BoardData } from "@/lib/kanban";
+import { createId, isBoardData, moveCard, type BoardData } from "@/lib/kanban";
 
-export const KanbanBoard = () => {
-  const [board, setBoard] = useState<BoardData>(() => initialData);
+type KanbanBoardProps = {
+  refreshKey?: number;
+};
+
+export const KanbanBoard = ({ refreshKey = 0 }: KanbanBoardProps) => {
+  const [board, setBoard] = useState<BoardData | null>(null);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const boardRef = useRef<BoardData | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -25,69 +33,197 @@ export const KanbanBoard = () => {
     })
   );
 
-  const cardsById = useMemo(() => board.cards, [board.cards]);
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadBoard = async () => {
+      try {
+        const response = await fetch("/api/board");
+        if (!response.ok) {
+          throw new Error(`Could not load board (${response.status}).`);
+        }
+        const data: unknown = await response.json();
+        if (!isBoardData(data)) {
+          throw new Error("The server returned an invalid board.");
+        }
+        if (isMounted) {
+          boardRef.current = data;
+          setBoard(data);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "Could not load the board. Try again."
+          );
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadBoard();
+    return () => {
+      isMounted = false;
+    };
+  }, [refreshKey]);
+
+  const persistBoard = async (nextBoard: BoardData) => {
+    const previousBoard = boardRef.current;
+    if (!previousBoard || isSaving) {
+      return;
+    }
+
+    boardRef.current = nextBoard;
+    setBoard(nextBoard);
+    setErrorMessage("");
+    setIsSaving(true);
+
+    try {
+      const response = await fetch("/api/board", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nextBoard),
+      });
+      if (!response.ok) {
+        throw new Error(`Could not save board (${response.status}).`);
+      }
+      const savedBoard: unknown = await response.json();
+      if (!isBoardData(savedBoard)) {
+        throw new Error("The server returned an invalid board.");
+      }
+      boardRef.current = savedBoard;
+      setBoard(savedBoard);
+    } catch (error) {
+      boardRef.current = previousBoard;
+      setBoard(previousBoard);
+      setErrorMessage(
+        `${
+          error instanceof Error
+            ? error.message
+            : "Could not save the board."
+        } Changes were reverted.`
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const cardsById = useMemo(() => board?.cards ?? {}, [board?.cards]);
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveCardId(event.active.id as string);
+    if (!isSaving) {
+      setActiveCardId(event.active.id as string);
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveCardId(null);
 
-    if (!over || active.id === over.id) {
+    if (isSaving || !over || active.id === over.id) {
       return;
     }
 
-    setBoard((prev) => ({
-      ...prev,
-      columns: moveCard(prev.columns, active.id as string, over.id as string),
-    }));
+    if (board) {
+      void persistBoard({
+        ...board,
+        columns: moveCard(board.columns, String(active.id), String(over.id)),
+      });
+    }
   };
 
   const handleRenameColumn = (columnId: string, title: string) => {
-    setBoard((prev) => ({
-      ...prev,
-      columns: prev.columns.map((column) =>
-        column.id === columnId ? { ...column, title } : column
-      ),
-    }));
+    if (board && title.trim()) {
+      void persistBoard({
+        ...board,
+        columns: board.columns.map((column) =>
+          column.id === columnId ? { ...column, title: title.trim() } : column
+        ),
+      });
+    }
   };
 
   const handleAddCard = (columnId: string, title: string, details: string) => {
+    if (!board) {
+      return;
+    }
     const id = createId("card");
-    setBoard((prev) => ({
-      ...prev,
+    void persistBoard({
+      ...board,
       cards: {
-        ...prev.cards,
+        ...board.cards,
         [id]: { id, title, details: details || "No details yet." },
       },
-      columns: prev.columns.map((column) =>
+      columns: board.columns.map((column) =>
         column.id === columnId
           ? { ...column, cardIds: [...column.cardIds, id] }
           : column
       ),
-    }));
+    });
   };
 
   const handleDeleteCard = (columnId: string, cardId: string) => {
-    setBoard((prev) => {
-      return {
-        ...prev,
-        cards: Object.fromEntries(
-          Object.entries(prev.cards).filter(([id]) => id !== cardId)
-        ),
-        columns: prev.columns.map((column) =>
-          column.id === columnId
-            ? {
-                ...column,
-                cardIds: column.cardIds.filter((id) => id !== cardId),
-              }
-            : column
-        ),
-      };
+    if (!board) {
+      return;
+    }
+    const cards = { ...board.cards };
+    delete cards[cardId];
+    void persistBoard({
+      ...board,
+      cards,
+      columns: board.columns.map((column) =>
+        column.id === columnId
+          ? { ...column, cardIds: column.cardIds.filter((id) => id !== cardId) }
+          : column
+      ),
     });
   };
+
+  const handleEditCard = (cardId: string, title: string, details: string) => {
+    if (!board) {
+      return;
+    }
+    void persistBoard({
+      ...board,
+      cards: {
+        ...board.cards,
+        [cardId]: { ...board.cards[cardId], title, details },
+      },
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <p className="text-sm text-[var(--gray-text)]" role="status">
+          Loading board...
+        </p>
+      </main>
+    );
+  }
+
+  if (!board) {
+    return (
+      <main className="flex min-h-screen items-center justify-center px-6">
+        <section className="max-w-md rounded-3xl border border-[var(--stroke)] bg-white p-8 shadow-[var(--shadow)]">
+          <p className="text-sm text-red-700" role="alert">
+            {errorMessage}
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-5 rounded-full bg-[var(--secondary-purple)] px-5 py-3 text-sm font-semibold text-white"
+          >
+            Retry
+          </button>
+        </section>
+      </main>
+    );
+  }
 
   const activeCard = activeCardId ? cardsById[activeCardId] : null;
 
@@ -133,6 +269,17 @@ export const KanbanBoard = () => {
           </div>
         </header>
 
+        {errorMessage && (
+          <p className="text-sm text-red-700" role="alert">
+            {errorMessage}
+          </p>
+        )}
+        {isSaving && (
+          <p className="text-sm text-[var(--gray-text)]" role="status">
+            Saving changes...
+          </p>
+        )}
+
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -148,6 +295,8 @@ export const KanbanBoard = () => {
                 onRename={handleRenameColumn}
                 onAddCard={handleAddCard}
                 onDeleteCard={handleDeleteCard}
+                onEditCard={handleEditCard}
+                disabled={isSaving}
               />
             ))}
           </section>
