@@ -16,6 +16,8 @@ FREE_MODELS = (
     "dots-studio/dots-3-note-preview:free",
     "liquid/lfm-2.5-2.6b:free",
 )
+# OpenRouter rejects requests whose "models" fallback list is longer than this.
+MAX_MODELS_PER_REQUEST = 3
 
 
 class OpenRouterError(Exception):
@@ -48,7 +50,7 @@ async def complete(
         "models": [
             model,
             *(candidate for candidate in FREE_MODELS if candidate != model),
-        ],
+        ][:MAX_MODELS_PER_REQUEST],
         "messages": messages,
         "temperature": 0.2,
     }

@@ -7,6 +7,7 @@ import pytest
 from app.openrouter import (
     DEFAULT_MODEL,
     FREE_MODELS,
+    MAX_MODELS_PER_REQUEST,
     OpenRouterConfigurationError,
     OpenRouterError,
     complete,
@@ -38,7 +39,7 @@ def test_complete_sends_authorized_chat_request(
     assert len(requests) == 1
     assert requests[0].headers["Authorization"] == "Bearer test-key"
     body = json.loads(requests[0].content)
-    assert body["models"] == list(FREE_MODELS)
+    assert body["models"] == list(FREE_MODELS[:MAX_MODELS_PER_REQUEST])
     assert body["messages"] == [{"role": "user", "content": "What is 2 + 2?"}]
 
 
@@ -65,7 +66,8 @@ def test_complete_prioritizes_configured_free_model(
 
     models = json.loads(requests[0].content)["models"]
     assert models[0] == FREE_MODELS[1]
-    assert set(models) == set(FREE_MODELS)
+    assert len(models) == len(set(models)) == MAX_MODELS_PER_REQUEST
+    assert set(models) <= set(FREE_MODELS)
 
 
 def test_complete_rejects_non_free_model(
